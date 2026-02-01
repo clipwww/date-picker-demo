@@ -413,7 +413,7 @@ export default defineComponent({
                   @change="onTimeChange"
                 />
                 <!-- 確認 btn：使用 TimePicker (選日期時間/選時間模式) 時使用的樣式 -->
-                <div class="mt-3 border border-solid border-orange-500 rounded text-orange-500" :class="{ disabled: isConfirmButtonDisabled }" @click="onConfirm">
+                <div class="mt-3 border border-solid border-orange-500 rounded text-orange-500 text-center p-1" :class="{ disabled: isConfirmButtonDisabled }" @click="onConfirm">
                   確認
                 </div>
               </div>
