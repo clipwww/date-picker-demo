@@ -32,9 +32,9 @@ export default defineComponent({
         <span class="truncate" :class="{ 'text-gray-600': !value }">{{ value || placeholder }}</span>
       </div>
     </slot>
-    <div class="absolute transform top-1/2 -translate-y-1/2 right-3 flex items-center">
+    <div class="absolute top-1/2 -translate-y-1/2 transform right-3 flex items-center">
       <!-- 清除按鈕 -->
-      <div v-if="showClearBtn" class="mr-2" @click.stop="$emit('clear')">
+      <div v-if="showClearBtn" class="mr-2 flex items-center" @click.stop="$emit('clear')">
         <svg class="text-gray-600 cursor-pointer" width="14" height="14" viewBox="0 0 512 512"><path fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="32" d="M448 256c0-106-86-192-192-192S64 150 64 256s86 192 192 192s192-86 192-192Z" /><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="32" d="M320 320L192 192m0 128l128-128" /></svg>
       </div>
       <!-- 下拉箭頭 -->

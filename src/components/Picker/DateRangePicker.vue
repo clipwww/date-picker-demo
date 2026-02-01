@@ -206,7 +206,7 @@ export default defineComponent({
               >
                 <svg width="21" height="21" viewBox="0 0 24 24"><path fill="currentColor" d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6l6 6l1.41-1.41z" /></svg>
               </div>
-              <div v-else class="text-orange50 whitespace-nowrap" />
+              <div v-else class="text-orange-50 whitespace-nowrap" />
               <div class="w-full text-center col-span-5">
                 {{ datePanel.label }}
               </div>
@@ -238,7 +238,7 @@ export default defineComponent({
               @day-hover="onDayHover"
             >
               <template #date="{ number }">
-                <span class="text-normal">{{ number }}</span>
+                <span class="text-sm">{{ number }}</span>
               </template>
             </BaseDatePicker>
           </div>

@@ -3,7 +3,7 @@ import HelloWorld from './components/HelloWorld.vue'
 </script>
 
 <template>
-  <div class="bg-white p-5 max-w-lg w-lg">
+  <div class="bg-white p-5 w-full rounded">
     <HelloWorld />
     <!-- <a href="https://vitejs.dev" target="_blank">
       <img src="/vite.svg" class="logo" alt="Vite logo">

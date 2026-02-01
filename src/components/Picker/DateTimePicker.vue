@@ -332,7 +332,7 @@ export default defineComponent({
     <Transition>
       <div v-if="isPickerOpen" class="bg-white text-black shadow absolute top-[40px] left-0 z-10">
         <div class="flex" :class="right ? 'justify-end' : 'justify-start'">
-          <div class="bg-white text-black rounded elevation-4 pointer-events-auto">
+          <div class="bg-white text-black rounded shadow-lg pointer-events-auto">
             <div class="flex select-none">
               <!-- 選日期/選日期時間/選多個日期模式：使用 DatePicker -->
               <div v-if="isDateMode || isDateTimeMode || isMultipleDateMode" class="py-3 px-5 flex flex-col">
@@ -371,7 +371,7 @@ export default defineComponent({
                     @day-click="setDay"
                   >
                     <template #date="{ number }">
-                      <span class="text-normal">{{ number }}</span>
+                      <span class="text-sm">{{ number }}</span>
                     </template>
                   </BaseDatePicker>
                 </div>

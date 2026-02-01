@@ -193,7 +193,7 @@ export default defineComponent({
             }"
           >
             <slot name="date" v-bind="day">
-              {{ day.number }}
+              <span class="text-sm">{{ day.number }}</span>
             </slot>
           </div>
         </div>

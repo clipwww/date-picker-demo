@@ -331,7 +331,7 @@ export default defineComponent({
         <div
           v-for="item in column.items"
           :key="item.value"
-          class="h-8 rounded text-normal text-center py-[5px] px-1 my-1 snap-center"
+          class="h-8 rounded text-sm text-center py-[5px] px-1 my-1 snap-center"
           :class="{
             'min-w-[54px]': useCrossDay,
             'min-w-16': !useCrossDay,
@@ -355,9 +355,9 @@ export default defineComponent({
 <style lang="scss">
 .time-picker-scroll {
   @apply flex flex-1 flex-col;
-  @apply overflow-y-auto overflow overscroll-contain scroll
+  @apply overflow-y-auto overflow-auto overscroll-contain scroll-smooth;
   @apply h-full;
-  @apply px-1 py-140px;
+  @apply px-1 py-[140px];
   -ms-overflow-style: none; /* IE and Edge */
   scrollbar-width: none; /* Firefox */
   /* Hide scrollbar for Chrome, Safari and Opera */
