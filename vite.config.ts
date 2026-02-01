@@ -6,7 +6,7 @@ import autoprefixer from 'autoprefixer'
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  base: mode === 'development' ? '/' : '/date-picker-demo',
+  base: mode === 'development' ? '/' : '/date-picker-demo/',
   plugins: [vue(), WindiCSS()],
   css: {
     postcss: {
