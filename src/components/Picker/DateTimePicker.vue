@@ -6,6 +6,7 @@ import dayjs from 'dayjs'
 import { onClickOutside } from '@vueuse/core'
 
 import { useSingleDatePanel } from '../../composable/use-date-picker'
+import { useIsMobile } from '../../composable/use-is-mobile'
 import { dateHelpers } from '../../helpers'
 
 import BaseDatePicker from './BaseDatePicker.vue'
@@ -64,9 +65,14 @@ export default defineComponent({
     const isPickerOpen = ref(false)
     const dateSelected = ref<string | string[] | null>(null)
     const timeSelected = ref<string | null>(null)
+    const mobileNextDay = ref(false)
 
     const targetRef = ref(null)
-    onClickOutside(targetRef, () => isPickerOpen.value = false)
+    const isMobile = useIsMobile()
+    onClickOutside(targetRef, () => {
+      if (!isMobile.value)
+        isPickerOpen.value = false
+    })
 
     /** 選日期模式 */
     const isDateMode = computed(() => props.type === PickerTypeEnum.Date)
@@ -118,6 +124,8 @@ export default defineComponent({
 
       return useMaxTime ? maxTime : null
     })
+
+    const mobileTimeValue = computed(() => (timeSelected.value ? dateHelpers.adapterValidatedTime(timeSelected.value) : ''))
 
     /** 顯示在 Input 上的 Label */
     const displayLabel = computed(() => {
@@ -237,6 +245,7 @@ export default defineComponent({
 
       if (isTimeMode.value) {
         timeSelected.value = props.modelValue ? `${props.modelValue}` : null
+        mobileNextDay.value = !!timeSelected.value && dateHelpers.checkCrossDay(timeSelected.value)
         return
       }
 
@@ -244,6 +253,7 @@ export default defineComponent({
         timeSelected.value = props.modelValue ? dayjs(props.modelValue).format(timeFormat) : null
 
       dateSelected.value = props.modelValue ? dayjs(props.modelValue).format(dateFormat) : null
+      mobileNextDay.value = !!timeSelected.value && dateHelpers.checkCrossDay(timeSelected.value)
       /**
        * 開起 Picker 時預設顯示的月份
        * 有 value 以 value 為主
@@ -267,6 +277,39 @@ export default defineComponent({
       isPickerOpen.value = false
     }
 
+    function toCrossDayTime(time: string, isNextDay: boolean) {
+      if (!isNextDay)
+        return time
+
+      const [hour, minute] = time.split(':')
+      const nextHour = `${+hour + 24}`.padStart(2, '0')
+      return `${nextHour}:${minute}`
+    }
+
+    function onMobileTimeInput(event: Event) {
+      const target = event.target as HTMLInputElement
+      const value = target.value
+
+      if (!value) {
+        timeSelected.value = null
+        return
+      }
+
+      timeSelected.value = toCrossDayTime(value, mobileNextDay.value)
+      onTimeChange()
+    }
+
+    function onMobileCrossDayToggle(nextDay: boolean) {
+      mobileNextDay.value = nextDay
+      if (!timeSelected.value)
+        return
+
+      const baseTime = dateHelpers.adapterValidatedTime(timeSelected.value)
+      timeSelected.value = toCrossDayTime(baseTime, nextDay)
+      if (props.autoApply)
+        emitValue()
+    }
+
     function disabledDates(date: Date) {
       /** 多選已達上限，disable 掉除了已選日期外的其他日 */
       if (isMultipleDateMode.value && Array.isArray(dateSelected.value) && props.maxLength && dateSelected.value.length >= props.maxLength)
@@ -275,8 +318,13 @@ export default defineComponent({
       return false
     }
 
+    function closePicker() {
+      isPickerOpen.value = false
+    }
+
     return {
       targetRef,
+      isMobile,
       showDate,
       datePanel,
       dateSelected,
@@ -294,6 +342,8 @@ export default defineComponent({
       showClearBtn,
       minTime,
       maxTime,
+      mobileNextDay,
+      mobileTimeValue,
 
       disabledDates,
       prevMonth,
@@ -304,6 +354,9 @@ export default defineComponent({
       onInput,
       onConfirm,
       onClear,
+      onMobileTimeInput,
+      onMobileCrossDayToggle,
+      closePicker,
     }
   },
 })
@@ -329,8 +382,113 @@ export default defineComponent({
     </div>
 
     <!-- content -->
+    <Transition name="drawer">
+      <div v-if="isPickerOpen && isMobile" class="drawer-overlay" @click="closePicker">
+        <div class="drawer-panel" @click.stop>
+          <div class="drawer-header">
+            <div class="text-sm text-gray-600">請選擇</div>
+            <button class="drawer-close" type="button" @click="closePicker">X</button>
+          </div>
+          <div class="drawer-body">
+            <div v-if="isDateMode || isDateTimeMode || isMultipleDateMode" class="pb-3">
+              <div class="grid grid-cols-7 mb-3 items-center">
+                <div class="cursor-pointer" :class="{ 'pointer-events-none text-gray-200': isPrevDisabled }" @click="prevMonth">
+                  <svg width="21" height="21" viewBox="0 0 24 24"><path fill="currentColor" d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6l6 6l1.41-1.41z" /></svg>
+                </div>
+                <div class="w-full text-center col-span-5">
+                  {{ datePanel.label }}
+                </div>
+                <div class="relative">
+                  <div class="cursor-pointer" :class="{ 'pointer-events-none text-gray-200': isNextDisabled }" @click="nextMonth">
+                    <svg width="21" height="21" viewBox="0 0 24 24"><path fill="currentColor" d="M8.59 16.59L13.17 12L8.59 7.41L10 6l6 6l-6 6l-1.41-1.41z" /></svg>
+                  </div>
+                </div>
+              </div>
+              <button
+                class="drawer-now"
+                type="button"
+                :class="{ disabled: isTodayDisabled }"
+                @click="onNowClick"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24"><path fill="currentColor" d="M5 22q-.825 0-1.413-.587Q3 20.825 3 20V6q0-.825.587-1.412Q4.175 4 5 4h1V2h2v2h8V2h2v2h1q.825 0 1.413.588Q21 5.175 21 6v14q0 .825-.587 1.413Q19.825 22 19 22Zm0-2h14V10H5v10Z" /></svg>
+              </button>
+              <BaseDatePicker
+                :show-date="showDate"
+                :date-selected="dateSelected"
+                :min-date="minDate"
+                :max-date="maxDate"
+                :disabled-dates="disabledDates"
+                @day-click="setDay"
+              >
+                <template #date="{ number }">
+                  <span class="text-sm">{{ number }}</span>
+                </template>
+              </BaseDatePicker>
+            </div>
+            <div v-if="isDateTimeMode" class="h-[1px] bg-gray-200 my-3" />
+            <div
+              v-if="isTimeMode || isDateTimeMode"
+              class="pb-2 drawer-time-wrap"
+              :class="{ 'drawer-time-half': isDateTimeMode }"
+            >
+              <div class="drawer-time-native">
+                <div v-if="isTimeMode && useCrossDay" class="drawer-crossday">
+                  <button
+                    class="drawer-crossday-btn"
+                    :class="{ active: !mobileNextDay }"
+                    type="button"
+                    @click="onMobileCrossDayToggle(false)"
+                  >
+                    當日
+                  </button>
+                  <button
+                    class="drawer-crossday-btn"
+                    :class="{ active: mobileNextDay }"
+                    type="button"
+                    @click="onMobileCrossDayToggle(true)"
+                  >
+                    翌日
+                  </button>
+                </div>
+                <input
+                  class="drawer-time-input"
+                  type="time"
+                  :value="mobileTimeValue"
+                  :min="mobileNextDay ? undefined : (minTime || undefined)"
+                  :max="mobileNextDay ? undefined : (maxTime || undefined)"
+                  :step="minuteInterval * 60"
+                  @input="onMobileTimeInput"
+                >
+              </div>
+            </div>
+          </div>
+          <div class="drawer-footer">
+            <div class="flex items-center gap-2">
+              <div
+                v-if="showClearBtn"
+                class="text-orange-500 border border-solid border-orange-500 rounded px-4 py-1"
+                @click="onClear"
+              >
+                清除
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="text-black bg-gray-200 rounded px-4 py-1" @click="closePicker">取消</div>
+              <div
+                class="text-white bg-orange-500 rounded px-4 py-1"
+                :class="{ disabled: isConfirmButtonDisabled }"
+                @click="onConfirm"
+              >
+                確認
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
     <Transition>
-      <div v-if="isPickerOpen" class="bg-white text-black shadow absolute top-[40px] left-0 z-10">
+      <div v-if="isPickerOpen && !isMobile" class="bg-white text-black shadow absolute top-[40px] left-0 z-10">
         <div class="flex" :class="right ? 'justify-end' : 'justify-start'">
           <div class="bg-white text-black rounded shadow-lg pointer-events-auto">
             <div class="flex select-none">
@@ -425,7 +583,7 @@ export default defineComponent({
   </div>
 </template>
 
-<style lang="scss">
+<style lang="scss" scoped>
 .contain-layout {
   /**
    * .v-menu__content 自帶 contain: content = layout paint
@@ -433,5 +591,127 @@ export default defineComponent({
    * paint 會使內部的元素無法 render 超出 parent 的範圍（有點類似 overflow: hidden）
    */
   contain: layout;
+}
+
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: flex-end;
+  z-index: 50;
+}
+
+.drawer-panel {
+  position: relative;
+  background: #fff;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  position: relative;
+}
+
+.drawer-close {
+  background: transparent;
+  border: 0;
+  padding: 4px 8px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.drawer-body {
+  padding: 12px 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.drawer-now {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  width: 24px;
+  height: 24px;
+  background: #fff;
+  color: black;
+  border: none;
+  border-radius: 9999px;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.drawer-time-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.drawer-time-native {
+  width: 100%;
+  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.drawer-time-input {
+  width: 100%;
+  height: 40px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 0 12px;
+  font-size: 16px;
+}
+
+.drawer-crossday {
+  display: flex;
+  gap: 8px;
+}
+
+.drawer-crossday-btn {
+  flex: 1;
+  border: 1px solid #e5e7eb;
+  border-radius: 9999px;
+  background: #fff;
+  color: black;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.drawer-crossday-btn.active {
+  border-color: #f97316;
+  color: #fff;
+  background: #f97316;
+}
+
+.drawer-footer {
+  padding: 12px 16px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+:global(.drawer-enter-active),
+:global(.drawer-leave-active) {
+  transition: all 0.25s ease;
+}
+
+:global(.drawer-enter-from),
+:global(.drawer-leave-to) {
+  opacity: 0;
+  transform: translateY(20px);
 }
 </style>

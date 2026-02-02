@@ -8,6 +8,7 @@ import { onClickOutside } from '@vueuse/core'
 import { dateHelpers } from '../../helpers'
 
 import { useDoubleDatePanel } from '../../composable/use-date-picker'
+import { useIsMobile } from '../../composable/use-is-mobile'
 import BaseDatePicker from './BaseDatePicker.vue'
 import CustomInput from './CustomInput.vue'
 
@@ -45,7 +46,11 @@ export default defineComponent({
     const dateEnd = ref<ConfigType>('')
 
     const targetRef = ref(null)
-    onClickOutside(targetRef, onClose)
+    const isMobile = useIsMobile()
+    onClickOutside(targetRef, () => {
+      if (!isMobile.value)
+        onClose()
+    })
 
     const isConfirmButtonDisabled = computed(() => !dateStart.value || !dateEnd.value)
     const isClearButtonDisabled = computed(() => !dateStart.value && !dateEnd.value)
@@ -79,6 +84,8 @@ export default defineComponent({
         dateEnd: hoverDateEnd.value,
       }
     })
+
+    const mobilePanel = computed(() => datePanels.value?.[0])
 
     function onInput(isOpen: boolean) {
       /** Picker 打開時 */
@@ -154,10 +161,12 @@ export default defineComponent({
     return {
       targetRef,
       datePanels,
+      mobilePanel,
       dateStart,
       dateEnd,
       displayLabel,
       displayDateRange,
+      isMobile,
       isNextDisabled,
       isPrevDisabled,
       leftDate,
@@ -189,8 +198,68 @@ export default defineComponent({
         </template>
       </CustomInput>
     </div>
+    <Transition name="drawer">
+      <div v-if="isPickerOpen && isMobile" class="drawer-overlay" @click="onClose">
+        <div class="drawer-panel" @click.stop>
+          <div class="drawer-header">
+            <div class="text-sm text-gray-600">請選擇日期區間</div>
+            <button class="drawer-close" type="button" @click="onClose">X</button>
+          </div>
+          <div class="drawer-body">
+            <div v-if="mobilePanel" class="select-none">
+              <div class="grid grid-cols-7 mb-3 items-center">
+                <div class="cursor-pointer" :class="{ 'pointer-events-none text-gray-200': isPrevDisabled }" @click="prevMonth">
+                  <svg width="21" height="21" viewBox="0 0 24 24"><path fill="currentColor" d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6l6 6l1.41-1.41z" /></svg>
+                </div>
+                <div class="w-full text-center col-span-5">
+                  {{ mobilePanel.label }}
+                </div>
+                <div class="cursor-pointer" :class="{ 'pointer-events-none text-gray-200': isNextDisabled }" @click="nextMonth">
+                  <svg width="21" height="21" viewBox="0 0 24 24"><path fill="currentColor" d="M8.59 16.59L13.17 12L8.59 7.41L10 6l6 6l-6 6l-1.41-1.41z" /></svg>
+                </div>
+              </div>
+              <BaseDatePicker
+                :show-date="mobilePanel.date"
+                :date-start="displayDateRange.dateStart"
+                :date-end="displayDateRange.dateEnd"
+                :min-date="minDate"
+                :max-date="maxDate"
+                @day-click="onDayClick"
+                @day-hover="onDayHover"
+              >
+                <template #date="{ number }">
+                  <span class="text-sm">{{ number }}</span>
+                </template>
+              </BaseDatePicker>
+            </div>
+          </div>
+          <div class="drawer-footer">
+            <div class="flex items-center gap-2">
+              <div
+                class="text-orange-500 border border-solid border-orange-500 rounded px-4 py-1"
+                :class="{ 'pointer-events-none text-gray-200 border-gray-200': isClearButtonDisabled }"
+                @click="onClear"
+              >
+                清除
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="text-black bg-gray-200 rounded px-4 py-1" @click="onClose">取消</div>
+              <div
+                class="text-white bg-orange-500 rounded px-4 py-1"
+                :class="{ disabled: isConfirmButtonDisabled }"
+                @click="onConfirm"
+              >
+                確認
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
     <Transition>
-      <div v-if="isPickerOpen" class="bg-white text-black shadow p-5 absolute top-[40px] left-0 z-10">
+      <div v-if="isPickerOpen && !isMobile" class="bg-white text-black shadow p-5 absolute top-[40px] left-0 z-10">
         <div class="flex select-none">
           <div
             v-for="(datePanel, index) in datePanels"
@@ -263,4 +332,64 @@ export default defineComponent({
   </div>
 </template>
 
-<style lang="scss"></style>
+<style lang="scss" scoped>
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: flex-end;
+  z-index: 50;
+}
+
+.drawer-panel {
+  background: #fff;
+  width: 100%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.drawer-close {
+  background: transparent;
+  border: 0;
+  padding: 4px 8px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.drawer-body {
+  padding: 12px 16px;
+  overflow-y: auto;
+}
+
+.drawer-footer {
+  padding: 12px 16px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+:global(.drawer-enter-active),
+:global(.drawer-leave-active) {
+  transition: all 0.25s ease;
+}
+
+:global(.drawer-enter-from),
+:global(.drawer-leave-to) {
+  opacity: 0;
+  transform: translateY(20px);
+}
+</style>
